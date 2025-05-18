@@ -3,63 +3,82 @@ import sympy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.title("Aplikasi Turunan Parsial")
+# Konfigurasi awal
+st.set_page_config(page_title="Studi Kasus Turunan Parsial")
+st.title("📘 Studi Kasus Turunan Parsial")
+st.markdown("## Optimasi Biaya Produksi Baterai Kendaraan Listrik")
 
-# Definisikan simbol
+# Latar belakang
+st.markdown("""
+Perusahaan manufaktur kendaraan listrik (EV) seperti **Tesla**, **BYD**, dan **CATL** menghadapi tantangan dalam menurunkan biaya produksi baterai — komponen paling mahal dalam EV. Mereka memproduksi dua jenis modul baterai:
+
+- `x` : Modul baterai **standar**
+- `y` : Modul baterai **performa tinggi**
+
+Biaya produksi total tergantung pada jumlah masing-masing modul yang diproduksi.
+""")
+
+st.markdown("---")
+st.header("📌 1. Fungsi Biaya Produksi")
+default_fungsi = "5*x**2 + 4*x*y + 8*y**2 + 300*x + 500*y + 10000"
+fungsi_str = st.text_input("Masukkan fungsi biaya produksi total C(x, y):", default_fungsi)
+
 x, y = sp.symbols('x y')
 
-# Input fungsi dari pengguna
-fungsi_str = st.text_input("Masukkan fungsi f(x, y):", "x**2 * y + y**3")
-
 try:
-    # Konversi string ke ekspresi sympy
+    # Simbolik dan turunan
     f = sp.sympify(fungsi_str)
-    # Hitung turunan parsial
     fx = sp.diff(f, x)
     fy = sp.diff(f, y)
 
-    # Tampilkan fungsi dan turunannya dalam LaTeX
-    st.latex(f"f(x, y) = {sp.latex(f)}")
-    st.latex(f"\\frac{{\\partial f}}{{\\partial x}} = {sp.latex(fx)}")
-    st.latex(f"\\frac{{\\partial f}}{{\\partial y}} = {sp.latex(fy)}")
+    st.latex(f"C(x, y) = {sp.latex(f)}")
+    st.latex(f"\\frac{{\\partial C}}{{\\partial x}} = {sp.latex(fx)}")
+    st.latex(f"\\frac{{\\partial C}}{{\\partial y}} = {sp.latex(fy)}")
 
-    # Input titik evaluasi
-    x0 = st.number_input("Nilai x0:", value=1.0)
-    y0 = st.number_input("Nilai y0:", value=2.0)
+    st.markdown("---")
+    st.header("📊 2. Evaluasi Nilai di Titik Produksi")
 
-    # Hitung nilai fungsi dan gradien di titik (x0, y0)
+    st.write("Misalkan perusahaan ingin memproduksi:")
+    col1, col2 = st.columns(2)
+    with col1:
+        x0 = st.number_input("Jumlah modul standar (x₀):", value=50.0)
+    with col2:
+        y0 = st.number_input("Jumlah modul performa tinggi (y₀):", value=30.0)
+
     f_val = f.subs({x: x0, y: y0})
     fx_val = fx.subs({x: x0, y: y0})
     fy_val = fy.subs({x: x0, y: y0})
 
-    st.write(f"Nilai fungsi di titik ({x0}, {y0}):", f_val)
-    st.write(f"Gradien di titik ({x0}, {y0}):", (fx_val, fy_val))
+    # Hitung dalam rupiah: fx * 17.000 dan fy * 16.000
+    biaya_x = fx_val * 17000
+    biaya_y = fy_val * 16000
 
-    st.subheader("Grafik Permukaan & Bidang Singgung")
+    st.success(f"💰 Total biaya produksi pada titik ({x0}, {y0}): {f_val} dolar")
+    st.info(f"📈 Gradien di titik tersebut: (∂C/∂x, ∂C/∂y) = ({fx_val}, {fy_val})")
 
-    # Buat grid untuk plot
-    x_vals = np.linspace(x0 - 2, x0 + 2, 50)
-    y_vals = np.linspace(y0 - 2, y0 + 2, 50)
+    st.markdown(f"""
+    - ∂C/∂x = {fx_val} ⟶ Rp {biaya_x:,.0f}
+    - ∂C/∂y = {fy_val} ⟶ Rp {biaya_y:,.0f}
+    """)
+
+    st.markdown("---")
+    st.header("📈 3. Visualisasi Permukaan & Bidang Singgung")
+
+    x_vals = np.linspace(x0 - 20, x0 + 20, 50)
+    y_vals = np.linspace(y0 - 20, y0 + 20, 50)
     X, Y = np.meshgrid(x_vals, y_vals)
+    Z = sp.lambdify((x, y), f, 'numpy')(X, Y)
+    Z_tangent = float(f_val) + float(fx_val)*(X - x0) + float(fy_val)*(Y - y0)
 
-    # Fungsi numpy dari fungsi sympy
-    f_np = sp.lambdify((x, y), f, 'numpy')
-    Z = f_np(X, Y)
-
-    # Hitung bidang singgung
-    Z_tangent = float(f_val) + float(fx_val) * (X - x0) + float(fy_val) * (Y - y0)
-
-    # Plot permukaan dan bidang singgung
     fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(X, Y, Z, alpha=0.7, cmap='viridis')
-    ax.plot_surface(X, Y, Z_tangent, alpha=0.5, color='blue')
-    ax.set_title("Permukaan f(x, y) dan bidang singgungnya")
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('f(x, y)')
-
+    ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8)
+    ax.plot_surface(X, Y, Z_tangent, color='orange', alpha=0.4)
+    ax.set_title("Permukaan Fungsi Biaya dan Bidang Singgung")
+    ax.set_xlabel("x (Modul Standar)")
+    ax.set_ylabel("y (Modul Performa Tinggi)")
+    ax.set_zlabel("C(x, y)")
     st.pyplot(fig)
 
 except Exception as e:
-    st.error(f"Terjadi kesalahan: {e}")
+    st.error(f"Terjadi kesalahan dalam pengolahan fungsi: {e}")
